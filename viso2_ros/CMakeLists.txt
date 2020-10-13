@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
+set(CMAKE_BUILD_TYPE Debug)
+
 find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 
