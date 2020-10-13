@@ -429,7 +429,7 @@ bool Matrix::solve (const Matrix &M, FLOAT eps) {
   int32_t* ipiv  = new int32_t[m];
   
   // loop variables
-  int32_t i, icol, irow, j, k, l, ll;
+  int32_t i=0, icol=0, irow=0, j=0, k=0, l=0, ll=0;
   FLOAT big, dum, pivinv, temp;
   
   // initialize pivots to zero
