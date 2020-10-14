@@ -284,15 +284,13 @@ protected:
     r_image_cv_ptr = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
     out_image_cv = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
     
-    std::vector<cv::DMatch> cvMatches; // = visual_odometer_->getMatches();
+    std::vector<cv::DMatch> cvMatches; 
     std::vector<cv::KeyPoint> keypoints1, keypoints2;
-    //std::vector<int32_t> inlier_indices = visual_odometer_->getInlierIndices();
     
     keypoints1.resize(inlier_indices.size());
     keypoints2.resize(inlier_indices.size());
     cvMatches.resize(inlier_indices.size());
     
-    //std::vector<Matcher::p_match> matches = visual_odometer_->getMatches();
     for (register std::size_t i = 0; i < inlier_indices.size(); ++i)
     {
       const Matcher::p_match& match = matches[inlier_indices[i]];
@@ -310,6 +308,7 @@ protected:
     
     cv::drawMatches(l_image_cv_ptr->image, keypoints1, r_image_cv_ptr->image, keypoints2, cvMatches, out_image_cv->image); //
 
+    cv::resize(out_image_cv->image,out_image_cv->image,cv::Size(1800,1000));
     inliers_frame_pub_.publish(out_image_cv->toImageMsg()); //
   }
 
