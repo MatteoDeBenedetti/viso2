@@ -53,6 +53,7 @@ private:
 
   ros::Publisher point_cloud_pub_;
   ros::Publisher info_pub_;
+  ros::Publisher inliers_frame_pub_;
 
   bool got_lost_;
 
@@ -81,6 +82,7 @@ public:
 
     point_cloud_pub_ = local_nh.advertise<PointCloud>("point_cloud", 1);
     info_pub_ = local_nh.advertise<VisoInfo>("info", 1);
+    inliers_frame_pub_ = local_nh.advertise<sensor_msgs::Image>("image_inliers", 1);
 
     reference_motion_ = Matrix::eye(4);
   }
@@ -262,7 +264,53 @@ protected:
       ros::WallDuration time_elapsed = ros::WallTime::now() - start_time;
       info_msg.runtime = time_elapsed.toSec();
       info_pub_.publish(info_msg);
+
+      // publish frames with inliers
+      publishImageWithInliers(l_image_msg, r_image_msg,
+                              visual_odometer_->getMatches(),
+                              visual_odometer_->getInlierIndices());
+      
     }
+  }
+
+  void publishImageWithInliers(
+      const sensor_msgs::ImageConstPtr& l_image_msg,
+      const sensor_msgs::ImageConstPtr& r_image_msg,
+      const std::vector<Matcher::p_match>& matches,
+      const std::vector<int32_t>& inlier_indices)
+  {
+    cv_bridge::CvImagePtr l_image_cv_ptr, r_image_cv_ptr, out_image_cv;
+    l_image_cv_ptr = cv_bridge::toCvCopy(l_image_msg, sensor_msgs::image_encodings::BGR8);
+    r_image_cv_ptr = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
+    out_image_cv = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
+    
+    std::vector<cv::DMatch> cvMatches; // = visual_odometer_->getMatches();
+    std::vector<cv::KeyPoint> keypoints1, keypoints2;
+    //std::vector<int32_t> inlier_indices = visual_odometer_->getInlierIndices();
+    
+    keypoints1.resize(inlier_indices.size());
+    keypoints2.resize(inlier_indices.size());
+    cvMatches.resize(inlier_indices.size());
+    
+    //std::vector<Matcher::p_match> matches = visual_odometer_->getMatches();
+    for (register std::size_t i = 0; i < inlier_indices.size(); ++i)
+    {
+      const Matcher::p_match& match = matches[inlier_indices[i]];
+      
+      cv::KeyPoint k1(static_cast<float>(match.u1c), static_cast<float>(match.v1c),1);
+      cv::KeyPoint k2(static_cast<float>(match.u2c), static_cast<float>(match.v2c),1);
+      
+      float disparity = static_cast<float>(match.u1c) - static_cast<float>(match.u2c);
+      cv::DMatch cvMatch(i, i, disparity);
+      
+      keypoints1[i] = k1;
+      keypoints2[i] = k2;
+      cvMatches[i] = cvMatch; //
+    }
+    
+    cv::drawMatches(l_image_cv_ptr->image, keypoints1, r_image_cv_ptr->image, keypoints2, cvMatches, out_image_cv->image); //
+
+    inliers_frame_pub_.publish(out_image_cv->toImageMsg()); //
   }
 
   double computeFeatureFlow(
