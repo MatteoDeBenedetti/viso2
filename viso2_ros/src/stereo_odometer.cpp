@@ -138,11 +138,15 @@ protected:
     // convert images if necessary
     uint8_t *l_image_data, *r_image_data;
     int l_step, r_step;
-    cv_bridge::CvImageConstPtr l_cv_ptr, r_cv_ptr;
-    l_cv_ptr = cv_bridge::toCvShare(l_image_msg, sensor_msgs::image_encodings::MONO8);
+    cv_bridge::CvImagePtr l_cv_ptr_raw, r_cv_ptr_raw;
+    l_cv_ptr_raw = cv_bridge::toCvCopy(l_image_msg, sensor_msgs::image_encodings::MONO8);
+    cv_bridge::CvImagePtr l_cv_ptr = l_cv_ptr_raw;
+    //sharpen(l_cv_ptr_raw, l_cv_ptr);
     l_image_data = l_cv_ptr->image.data;
     l_step = l_cv_ptr->image.step[0];
-    r_cv_ptr = cv_bridge::toCvShare(r_image_msg, sensor_msgs::image_encodings::MONO8);
+    r_cv_ptr_raw = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::MONO8);
+    cv_bridge::CvImagePtr r_cv_ptr = r_cv_ptr_raw;
+    //sharpen(r_cv_ptr_raw, r_cv_ptr);
     r_image_data = r_cv_ptr->image.data;
     r_step = r_cv_ptr->image.step[0];
 
@@ -267,10 +271,22 @@ protected:
 
       // publish frames with inliers
       publishImageWithInliers(l_image_msg, r_image_msg,
+      // publishImageWithInliers2(l_cv_ptr, r_cv_ptr,
                               visual_odometer_->getMatches(),
                               visual_odometer_->getInlierIndices());
-      
     }
+  }
+
+  void sharpen(cv_bridge::CvImagePtr& image_in, cv_bridge::CvImagePtr& image_out)
+  {
+    cv::Mat kernel(3,3,CV_32F,cv::Scalar(0));
+    kernel.at<float>(1,1)= 5.0;
+    kernel.at<float>(0,1)= -1.0;
+    kernel.at<float>(2,1)= -1.0;
+    kernel.at<float>(1,0)= -1.0;
+    kernel.at<float>(1,2)= -1.0;
+
+    cv::filter2D(image_in->image,image_out->image,image_in->image.depth(),kernel);
   }
 
   void publishImageWithInliers(
@@ -283,6 +299,47 @@ protected:
     l_image_cv_ptr = cv_bridge::toCvCopy(l_image_msg, sensor_msgs::image_encodings::BGR8);
     r_image_cv_ptr = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
     out_image_cv = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
+    
+    std::vector<cv::DMatch> cvMatches; 
+    std::vector<cv::KeyPoint> keypoints1, keypoints2;
+    
+    keypoints1.resize(inlier_indices.size());
+    keypoints2.resize(inlier_indices.size());
+    cvMatches.resize(inlier_indices.size());
+    
+    for (register std::size_t i = 0; i < inlier_indices.size(); ++i)
+    {
+      const Matcher::p_match& match = matches[inlier_indices[i]];
+      
+      cv::KeyPoint k1(static_cast<float>(match.u1c), static_cast<float>(match.v1c),1);
+      cv::KeyPoint k2(static_cast<float>(match.u2c), static_cast<float>(match.v2c),1);
+      
+      float disparity = static_cast<float>(match.u1c) - static_cast<float>(match.u2c);
+      cv::DMatch cvMatch(i, i, disparity);
+      
+      keypoints1[i] = k1;
+      keypoints2[i] = k2;
+      cvMatches[i] = cvMatch; //
+    }
+    
+    cv::drawMatches(l_image_cv_ptr->image, keypoints1, r_image_cv_ptr->image, keypoints2, cvMatches, out_image_cv->image); //
+
+    cv::resize(out_image_cv->image,out_image_cv->image,cv::Size(1800,1000));
+    inliers_frame_pub_.publish(out_image_cv->toImageMsg()); //
+  }
+
+  void publishImageWithInliers2(
+      // const sensor_msgs::ImageConstPtr& l_image_msg,
+      cv_bridge::CvImagePtr& l_image_cv_ptr,
+      // const sensor_msgs::ImageConstPtr& r_image_msg,
+      cv_bridge::CvImagePtr& r_image_cv_ptr,
+      const std::vector<Matcher::p_match>& matches,
+      const std::vector<int32_t>& inlier_indices)
+  {
+    // cv_bridge::CvImagePtr l_image_cv_ptr, r_image_cv_ptr, out_image_cv;
+    // l_image_cv_ptr = cv_bridge::toCvCopy(l_image_msg, sensor_msgs::image_encodings::BGR8);
+    // r_image_cv_ptr = cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
+    cv_bridge::CvImagePtr out_image_cv = r_image_cv_ptr; //cv_bridge::toCvCopy(r_image_msg, sensor_msgs::image_encodings::BGR8);
     
     std::vector<cv::DMatch> cvMatches; 
     std::vector<cv::KeyPoint> keypoints1, keypoints2;
