@@ -134,6 +134,22 @@ protected:
       base_to_sensor.setIdentity();
     }
 
+    /*
+    std::cout << "------------------" << std::endl;
+    std::cout << "x: " << base_to_sensor.getOrigin().getX();
+    std::cout << "y: " << base_to_sensor.getOrigin().getY();
+    std::cout << "z: " << base_to_sensor.getOrigin().getZ() << std::endl;
+    double roll, pitch, yaw;
+    base_to_sensor.getBasis().getRPY(roll, pitch, yaw);
+    std::cout << "roll: " << roll*180/M_PI << " pitch: " << pitch*180/M_PI << " yaw: " << yaw*180/M_PI << std::endl;
+    tf::Quaternion quat_base_to_sensor = base_to_sensor.getRotation();
+    std::cout << "x: " << quat_base_to_sensor.getX(); //[0];
+    std::cout << " y: " << quat_base_to_sensor.getY(); //[1];
+    std::cout << " z: " << quat_base_to_sensor.getZ(); //[2];
+    std::cout << " w: " << quat_base_to_sensor.getW() << std::endl;
+    std::cout << "------------------" << std::endl;
+    */
+    
     tf::Transform base_transform = base_to_sensor * integrated_pose_ * base_to_sensor.inverse();
 
     nav_msgs::Odometry odometry_msg;
