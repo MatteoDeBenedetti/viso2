@@ -209,10 +209,12 @@ protected:
                                       visual_odometer_->getInlierIndices());
         }
 
-        // publish frames with inliers
+        if (inliers_frame_pub_.getNumSubscribers() > 0)
+        {
         publishImageWithInliers(l_image_msg, r_image_msg,
                                 visual_odometer_->getMatches(),
                                 visual_odometer_->getInlierIndices());
+        }
 
       }
       else

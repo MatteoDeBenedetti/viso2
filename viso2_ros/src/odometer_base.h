@@ -112,7 +112,15 @@ protected:
       integrated_pose_.setIdentity();
       tf_listener_.clear();
     }
-    integrated_pose_ *= delta_transform;
+
+    // trying to scale the x delta-pose
+    tf::Transform delta_transform_scaled = delta_transform;
+    tf::Vector3 new_origin = delta_transform_scaled.getOrigin();
+    new_origin.setX(delta_transform_scaled.getOrigin().getX()*0.4); //0.8571);
+    delta_transform_scaled.setOrigin(new_origin);
+
+    // integrated_pose_ *= delta_transform;
+    integrated_pose_ *= delta_transform_scaled;
 
     // transform integrated pose to base frame
     tf::StampedTransform base_to_sensor;
@@ -136,6 +144,13 @@ protected:
 
     tf::Transform base_transform = base_to_sensor * integrated_pose_ * base_to_sensor.inverse();
 
+    // trying to scale the x delta-pose
+    /*
+    tf::Vector3 new_origin = base_transform.getOrigin();
+    new_origin.setX(base_transform.getOrigin().getX()*0.4); //0.8571);
+    base_transform.setOrigin(new_origin);
+    */ 
+
     nav_msgs::Odometry odometry_msg;
     odometry_msg.header.stamp = timestamp;
     odometry_msg.header.frame_id = odom_frame_id_;
@@ -143,7 +158,8 @@ protected:
     tf::poseTFToMsg(base_transform, odometry_msg.pose.pose);
 
     // calculate twist (not possible for first run as no delta_t can be computed)
-    tf::Transform delta_base_transform = base_to_sensor * delta_transform * base_to_sensor.inverse();
+    // tf::Transform delta_base_transform = base_to_sensor * delta_transform * base_to_sensor.inverse();
+    tf::Transform delta_base_transform = base_to_sensor * delta_transform_scaled * base_to_sensor.inverse();
     if (!last_update_time_.isZero())
     {
       double delta_t = (timestamp - last_update_time_).toSec();
