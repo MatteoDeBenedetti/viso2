@@ -55,7 +55,10 @@ vector<double> VisualOdometryStereo::estimateMotion (vector<Matcher::p_match> p_
   // get number of matches
   int32_t N  = p_matched.size();
   if (N<6)
+  {
+    cout << "VO failed for number of matches: " << N << endl;
     return vector<double>();
+  }
 
   // allocate dynamic memory
   X          = new double[N];
@@ -123,10 +126,14 @@ vector<double> VisualOdometryStereo::estimateMotion (vector<Matcher::p_match> p_
 
     // not converged
     if (result!=CONVERGED)
+    {
+      cout << "VO failed for ransac non converging" << endl;
       success = false;
+    }
 
   // not enough inliers
   } else {
+    cout << "VO failed for number of inliers: " << inliers.size() << endl;
     success = false;
   }
 
